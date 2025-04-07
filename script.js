@@ -151,45 +151,29 @@ function toggleAuthForm() {
 function login() {
     const email = sanitizeInput(document.getElementById('login-email').value.trim());
     const password = document.getElementById('login-password').value;
-
+    console.log('Attempting login with:', email, password); // Debug
     if (!email || !password) {
-        showError('Please enter both email and password');
-        return;
+      showError('Please enter both email and password');
+      return;
     }
     if (!validateEmail(email)) {
-        showError('Please enter a valid email address');
-        return;
+      showError('Please enter a valid email address');
+      return;
     }
-
     auth.signInWithEmailAndPassword(email, password)
-        .then(userCredential => {
-            return db.collection(COLLECTION_NAMES.USERS).doc(userCredential.user.uid).get();
-        })
-        .then(doc => {
-            if (doc.exists) {
-                showSuccess(`Welcome back, ${doc.data().name || doc.data().email}!`);
-                showHome();
-            } else {
-                auth.signOut();
-                throw new Error('User account not found');
-            }
-        })
-        .catch(error => {
-            const retry = () => login();
-            switch (error.code) {
-                case 'auth/invalid-login-credentials':
-                case 'auth/user-not-found':
-                case 'auth/wrong-password':
-                    showError('Invalid email or password', retry);
-                    break;
-                case 'auth/too-many-requests':
-                    showError('Too many attempts. Please try later');
-                    break;
-                default:
-                    showError('Login failed: ' + error.message, retry);
-            }
-        });
-}
+      .then(userCredential => {
+        console.log('Login successful:', userCredential.user.uid);
+        return db.collection(COLLECTION_NAMES.USERS).doc(userCredential.user.uid).get();
+      })
+      .then(doc => {
+        if (doc.exists) showSuccess(`Welcome back, ${doc.data().name || doc.data().email}!`);
+        else throw new Error('User account not found');
+      })
+      .catch(error => {
+        console.error('Login error:', error.code, error.message);
+        showError('Invalid email or password');
+      });
+  }
 
 function loginWithGoogle() {
     const provider = new firebase.auth.GoogleAuthProvider();
@@ -212,32 +196,33 @@ function register() {
     const email = sanitizeInput(document.getElementById('register-email').value.trim());
     const password = document.getElementById('register-password').value;
     const imageFile = document.getElementById('register-image').files[0];
-
+    console.log('Registering:', { name, email, password, imageFile }); // Debug
+  
     if (!name || !email || !password) {
-        showError('Please fill in all fields');
-        return;
+      showError('Please fill in all fields');
+      return;
     }
     if (!validateEmail(email)) {
-        showError('Please enter a valid email address');
-        return;
+      showError('Please enter a valid email address');
+      return;
     }
-
+  
     let createdUser;
     auth.createUserWithEmailAndPassword(email, password)
-        .then(userCredential => {
-            createdUser = userCredential.user;
-            return createUserProfile(createdUser, name);
-        })
-        .then(() => imageFile ? uploadProfileImage(createdUser, imageFile) : createdUser)
-        .then(user => {
-            showSuccess('Registration successful!');
-            showHome();
-        })
-        .catch(error => {
-            if (createdUser) createdUser.delete();
-            showError('Registration failed: ' + error.message);
-        });
-}
+      .then(userCredential => {
+        createdUser = userCredential.user;
+        return createUserProfile(createdUser, name);
+      })
+      .then(() => imageFile ? uploadProfileImage(createdUser, imageFile) : createdUser)
+      .then(() => {
+        showSuccess('Registration successful!');
+        showHome();
+      })
+      .catch(error => {
+        if (createdUser) createdUser.delete();
+        showError('Registration failed: ' + error.message);
+      });
+  }
 
 function registerWithGoogle() {
     const provider = new firebase.auth.GoogleAuthProvider();
